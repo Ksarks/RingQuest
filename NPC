@@ -1,0 +1,23 @@
+#define M_GOBLIN_NAME "goblin"
+#define M_GOBLIN_TILE 'g'
+#define M_GOBLIN_COLOR 2
+#define M_GOBLIN_TOHIT -2
+#define M_GOBLIN_DAMAGE 6
+#define M_GOBLIN_SPEED 20
+#define M_GOBLIN_HP 12
+
+#define M_ORC_NAME "orc"
+#define M_ORC_TILE 'O'
+#define M_ORC_COLOR 10
+#define M_ORC_TOHIT 1
+#define M_ORC_DAMAGE 10
+#define M_ORC_SPEED 20
+#define M_ORC_HP 20
+
+#define M_RAT_NAME "rat"
+#define M_RAT_TILE 'r'
+#define M_RAT_COLOR 7
+#define M_RAT_TOHIT 3
+#define M_RAT_DAMAGE 4
+#define M_RAT_SPEED 30
+#define M_RAT_HP 6
