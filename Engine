@@ -1,0 +1,636 @@
+#ifndef ENGINE_H
+#define ENGINE_H
+
+#include <stdlib.h>
+#include <conio.h>
+#include <cstring>
+#include <cmath>
+#include <time.h>
+#include <list>
+
+using namespace std;
+
+#define HEIGHT 40
+#define WIDTH 80
+
+#define C_BLACK 0
+#define C_BLUE 1
+#define C_GREEN 2
+#define C_AQUA 3
+#define C_RED 4
+#define C_PINK 5
+#define C_YELLOW 6
+#define C_WHITE 7
+#define C_LIGHT +8
+
+#include "Console.h"
+#pragma comment ( lib, "Console.lib" )
+
+
+#define MAP_HEIGHT HEIGHT-5
+#define MAP_WIDTH WIDTH-15
+
+#define	MAX_ROOMS 300
+
+#define	NUM_WALL		0
+#define	TILE_WALL		"#"
+
+#define	NUM_SPACE		1
+#define	TILE_SPACE		"."
+
+#define	NUM_UPSTAIR		2
+#define	TILE_UPSTAIR	"<"
+
+#define	NUM_DOWNSTAIR	3
+#define	TILE_DOWNSTAIR	">"
+
+int lastBackgroundColor;
+int lastForegroundColor;
+
+struct line
+{
+	float A,B,C;
+}
+;
+int isIntercept(
+	float ax1, float ay1,
+	float ax2, float ay2,
+	float bx1, float by1,
+	float bx2, float by2
+	)
+{
+	line a,b;
+	a.A=ay1-ay2;
+	a.B=ax2-ax1;
+	a.C= -a.A*ax1 -a.B*ay1;
+
+	b.A=by1-by2;
+	b.B=bx2-bx1;
+	b.C= -b.A*bx1 -b.B*by1;
+
+	bool Da1 = (b.A*ax1 + b.B*ay1 + b.C) > 0;
+	bool Ea1 = (b.A*ax1 + b.B*ay1 + b.C) == 0;
+
+	bool Da2 = (b.A*ax2 + b.B*ay2 + b.C) > 0;
+	bool Ea2 = (b.A*ax2 + b.B*ay2 + b.C) == 0;
+
+	bool Db1 = (a.A*bx1 + a.B*by1 + a.C) > 0;
+	bool Eb1 = (a.A*bx1 + a.B*by1 + a.C) == 0;
+
+	bool Db2 = (a.A*bx2 + a.B*by2 + a.C) > 0;
+	bool Eb2 = (a.A*bx2 + a.B*by2 + a.C) == 0;
+
+	if(Ea1 || Ea2 || Eb1 || Eb2) return false;
+	if((Da1 != Da2) && (Db1 != Db2)) return true;
+	return false;
+
+}
+
+
+class Fat;
+class Floor;
+class Player;
+
+struct Room
+{
+	int x,y;
+	int dx,dy;
+};
+class Fat
+{
+private:
+public:
+	void init( void );
+	static int rnd( int min, int max );
+	static int dist( int x1, int y1, int x2, int y2 );
+	static bool isInLine(float x1,float y1,float x2,float y2,float x3,float y3);
+	static void color( int backcolor, int textcolor );
+	Fat(){ init(); }
+};
+class Floor
+{
+private:
+	int map[MAP_WIDTH][MAP_HEIGHT];
+	bool remember[MAP_WIDTH][MAP_HEIGHT];
+	int roomNumber;
+	Room room[MAX_ROOMS];
+	int upStairsX, upStairsY, downStairsX, downStairsY;
+public:	
+	
+	Floor()
+	{
+		for(int i=0; i<MAP_WIDTH;i++)
+			for(int j=0; j<MAP_HEIGHT;j++)
+				remember[i][j] = false;
+
+		for(int i=0; i<MAX_ROOMS; i++) {room[i].x=-1; room[i].y=-1;}
+		roomNumber = 0;
+	}
+	int getUpStairsX(){return upStairsX;}
+	int getUpStairsY(){return upStairsY;}
+	int getDownStairsX(){return downStairsX;}
+	int getDownStairsY(){return downStairsY;}
+	int getMaxX()
+	{
+		return MAP_WIDTH - 1;
+	}
+	int getMaxY()
+	{
+		return MAP_HEIGHT - 1;
+	}
+
+	void drawMap(Player p);
+	bool canReach(int x, int y);
+	void paintPlot(int x, int y, int pattern);
+	void paintRect(int x, int y, int dx, int dy, int pattern);
+	void paintLine(int x1, int y1, int x2, int y2, int type);
+	void addRoom(int x, int y, int dx, int dy);
+	void addLines( void );
+	void addStairs( void );
+	bool isVisible( Player p, int x, int y );
+};
+class Player
+{
+private:
+	int x,y;
+	int HP, MHP, MP, MMP, XP;
+	int hands[9];
+	int vision;
+	int rotate;
+	int FOV;
+public:
+
+	Player(int initX, int initY)
+	{
+		HP = 20; MP = 10; XP = 0;
+		MHP = HP; MMP = MP;
+		x=initX; y=initY;
+		vision = 10;
+		rotate = 0;
+		FOV = 3;
+	}
+	int getFOV(){ return FOV;}
+	int getX(){ return x;}
+	int getY(){ return y;}
+	int getRotate(){ return rotate;}
+
+	void move(int rot, Floor f);
+	void turnLeft();
+	void turnRight();
+	void moveLeft(Floor f);
+	void moveRight(Floor f);
+	void moveAhead(Floor f);
+	void moveBack(Floor f);
+	void drawRotation( int x, int y );
+	void drawHP( int x, int y );
+	void drawMP( int x, int y );
+	void drawXP( int x, int y );
+};
+class NPC
+{
+private:
+	int HP;
+	int speed;
+	int toHit;
+	int damage;
+	char name[100];
+	char tile;
+	int color;
+	int x, y;
+public:
+
+	NPC( int iHP, int itoHit, int idamage, int ispeed,
+		int icolor, int ix, int iy, char itile
+		)
+	{
+		HP = iHP;
+		toHit = itoHit;
+		damage = idamage;
+		speed = ispeed;
+		color = icolor;
+		x=ix;
+		y=iy;
+		tile=itile;
+	}
+
+	int getX(){return x;}
+	int getY(){return y;}
+	void drawNPC();
+	void attack(int direction);
+	void move( Player p, Floor f, int direction );
+
+
+};
+
+
+
+void Fat::init( void )
+{
+	console.SetTitle("Ring Quest");
+	//console.Color( RED );
+	//console.Resize(64, 32);
+	console.Position( 10, 15 );
+	console<<"Created by Fat. 2014";
+	console.Position( 10, 16 );
+	console<<"Universal Roguelike Engine";
+	console.Position( 10, 17 );
+	console<<"Version 0.1";
+	console.WaitForKeypress();
+	console.Clear();
+	console.Position( 0, 0 );
+	srand(time(0));
+}
+int Fat::rnd ( int min, int max )
+{
+	return rand() % ( max-min+1 ) + min;
+}
+int Fat::dist( int x1, int y1, int x2, int y2 )
+{
+	float temp = sqrt( float((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) );
+	int temp2 = int(temp);
+	return temp2;
+}
+void Fat::color( int backcolor, int textcolor )
+{
+	if (lastBackgroundColor!=backcolor || lastForegroundColor!=textcolor)
+	{
+		HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
+		WORD wAttributes = ((unsigned int) backcolor << 4) | (unsigned int) textcolor;
+		SetConsoleTextAttribute(hCon, wAttributes);
+		lastBackgroundColor = backcolor;
+		lastForegroundColor = textcolor;
+	}
+}
+bool Fat::isInLine(float x1,float y1,float x2,float y2,float x3,float y3)
+{
+	if(abs(x1-x2) == abs(y1-y2))
+	{
+		if(abs(x1-x3) == abs(y1-y3)) return true;
+			return false;
+	}
+	
+	if(isIntercept (x1,y1,x2,y2,   x3-0.5,y3-0.5, x3-0.5,y3+0.5)) return true;
+	if(isIntercept (x1,y1,x2,y2,   x3-0.5,y3+0.5, x3+0.5,y3+0.5)) return true;
+	if(isIntercept (x1,y1,x2,y2,   x3+0.5,y3+0.5, x3+0.5,y3-0.5)) return true;
+	if(isIntercept (x1,y1,x2,y2,   x3+0.5,y3-0.5, x3-0.5,y3-0.5)) return true;
+	return false;
+}
+
+void Floor::drawMap( Player p )
+{
+	for(int y=0; y<MAP_HEIGHT; y++)
+	{
+		for(int x=0; x<MAP_WIDTH; x++)
+		{
+			Fat::color( C_BLACK, C_BLACK C_LIGHT  );
+			if( isVisible( p, x, y ) && Fat::dist(p.getX(), p.getY(), x, y) <= p.getFOV())
+			{
+				Fat::color( C_BLACK, C_WHITE C_LIGHT);
+				remember[x][y] = true;
+				if(map[x][y] != NUM_WALL)
+				{
+					remember[x+1][y] = true;
+					remember[x-1][y] = true;
+					remember[x+1][y+1] = true;
+					remember[x-1][y+1] = true;
+					remember[x+1][y-1] = true;
+					remember[x-1][y-1] = true;
+					remember[x][y+1] = true;
+					remember[x][y-1] = true;
+				}
+			}
+			if(( x != p.getX() || y != p.getY() ) && (remember[x][y]))
+			{
+				console.Position( x, y );
+				if ( map[x][y] == NUM_WALL )
+				{
+					console<<TILE_WALL;
+				}
+				else if ( map[x][y] == NUM_SPACE )
+				{
+					console<<TILE_SPACE;
+				}
+				else if ( map[x][y] == NUM_UPSTAIR )
+				{
+					console<<TILE_UPSTAIR;
+				}
+				else if ( map[x][y] == NUM_DOWNSTAIR )
+				{
+					console<<TILE_DOWNSTAIR;
+				}
+				else console<<"!";
+			}
+		}
+	}
+	Fat::color( C_BLACK, C_WHITE C_LIGHT);
+	console.Position( p.getX(), p.getY() );
+	console<<"@";
+}
+bool Floor::canReach( int x, int y )
+{
+	return (map[x][y]!= NUM_WALL);
+	//TODO: Move into enemy
+}
+void Floor::paintPlot( int x, int y, int pattern )
+{
+	map[x][y]=pattern;
+}
+void Floor::paintRect( int x, int y, int dx, int dy, int pattern )
+{
+	for( int i = y; i <= y+dy-1; i++ )
+		for( int j = x; j <= x+dx-1; j++ )
+			paintPlot( j, i, pattern );
+}
+void Floor::paintLine(int x1, int y1, int x2, int y2, int type)
+{
+	if( type == 0 )
+	{ int b=x1; x1=x2; x2=b; b=y1; y1=y2; y2=b; }
+	if( x1 < x2 )paintRect( x1, y1, x2-x1+1, 1, NUM_SPACE );
+	if( x1 > x2 )paintRect( x2, y1, x1-x2+1, 1, NUM_SPACE );
+	if( y1 < y2 )paintRect( x2, y1, 1, y2-y1+1, NUM_SPACE );
+	if( y1 > y2 )paintRect( x2, y2, 1, y1-y2+1, NUM_SPACE );
+}
+void Floor::addRoom(int x, int y, int dx, int dy)
+{
+	room[roomNumber].x = x;
+	room[roomNumber].y = y;
+	room[roomNumber].dx = dx;
+	room[roomNumber].dy = dy;
+	paintRect( x, y, dx, dy, NUM_SPACE);
+	roomNumber++;
+}
+void Floor::addLines( void )
+{
+	for( int i = 1; i < roomNumber; i++ )
+		paintLine( room[i].x, room[i].y, room[i-1].x, room[i-1].y, Fat::rnd(0,1));
+}
+void Floor::addStairs( void )
+{
+	upStairsX = room[0].x + Fat::rnd(0,room[0].dx-1);
+	upStairsY = room[0].y + Fat::rnd(0,room[0].dy-1);
+	downStairsX = room[roomNumber-1].x + Fat::rnd(0,room[roomNumber-1].dx-1);
+	downStairsY = room[roomNumber-1].y + Fat::rnd(0,room[roomNumber-1].dy-1);
+	paintPlot( upStairsX, upStairsY, NUM_UPSTAIR );
+	paintPlot( downStairsX, downStairsY, NUM_DOWNSTAIR );
+}
+bool Floor::isVisible( Player p, int cellX, int cellY )
+{	
+	
+	switch(p.getRotate())
+	{
+	case 0:
+		if(cellY>p.getY()) return false;
+		break;
+	case 1:
+		if((cellX-cellY) < (p.getX()-p.getY())) return false;
+		break;
+	case 2:
+		if(cellX<p.getX()) return false;
+		break;
+	case 3:
+		if((cellX-p.getY()) < (p.getX()-cellY)) return false;
+		break;
+	case 4:
+		if(cellY<p.getY()) return false;
+		break;
+	case 5:
+		if((cellX-cellY) > (p.getX()-p.getY())) return false;
+		break;
+	case 6:
+		if(cellX>p.getX()) return false;
+		break;
+	case 7:
+		if((cellX-p.getY()) > (p.getX()-cellY)) return false;
+		break;
+	}
+	if(cellY<p.getY())
+	{
+		if(cellX<p.getX())
+		{
+			for(int j=cellY; j<=p.getY(); j++)
+				for(int i=cellX; i<=p.getX(); i++)
+					if(Fat::isInLine(p.getX(),p.getY(),cellX,cellY,i,j) && (! canReach(i,j))) return false;
+		}else{
+			for(int j=cellY; j<=p.getY(); j++)
+				for(int i=cellX; i>=p.getX(); i--)
+					if(Fat::isInLine(p.getX(),p.getY(),cellX,cellY,i,j) && (! canReach(i,j))) return false;
+		}
+	}else{
+		if(cellX<p.getX())
+		{
+			for(int j=cellY; j>=p.getY(); j--)
+				for(int i=cellX; i<=p.getX(); i++)
+					if(Fat::isInLine(p.getX(),p.getY(),cellX,cellY,i,j) && (! canReach(i,j))) return false;
+		}else{
+			for(int j=cellY; j>=p.getY(); j--)
+				for(int i=cellX; i>=p.getX(); i--)
+					if(Fat::isInLine(p.getX(),p.getY(),cellX,cellY,i,j) && (! canReach(i,j))) return false;
+		}
+	}
+	return true;
+}	
+
+void Player::move(int rot, Floor f)
+{
+	switch(rot)
+	{
+	case 6:
+		if(x>0 && f.canReach(x-1,y))x--;
+		break;
+	case 7:
+		if(x>0 && y>0 && f.canReach(x-1,y-1)){x--; y--;}
+		break;
+	case 0:
+		if(y>0 && f.canReach(x,y-1))y--;
+		break;
+	case 1:
+		if(y>0 && f.canReach(x+1,y-1)){x++;y--;}
+		break;
+	case 2:
+		if(f.canReach(x+1,y))x++;
+		break;
+	case 3:
+		if(f.canReach(x+1,y+1)){x++;y++;}
+		break;
+	case 4:
+		if(f.canReach(x,y+1)){y++;}
+		break;
+	case 5:
+		if(x>0 && f.canReach(x-1,y+1)){x--;y++;}
+		break;
+	}
+}
+void Player::turnLeft( void )
+{
+	rotate--;
+	if(rotate<0)rotate+=8;
+}
+void Player::turnRight( void )
+{
+	rotate++;
+	if(rotate>=8)rotate-=8;
+}
+void Player::moveLeft(Floor f)
+{
+	if(rotate == 0) move(6, f);
+	else if(rotate == 1) move(7, f);
+	else move(rotate-2, f);
+}
+void Player::moveRight(Floor f)
+{
+	if(rotate == 6) move(0, f);
+	else if(rotate == 7) move(1, f);
+	else move(rotate+2, f);
+}
+void Player::moveAhead(Floor f)
+{
+	move(rotate, f);
+}
+void Player::moveBack(Floor f)
+{
+	if(rotate < 4) move(rotate+4, f);
+	else move(rotate-4, f);
+}
+void Player::drawRotation( int x, int y )
+{
+	console.Position( x, y );
+	console<<"ЪДДДї";
+	console.Position( x, y+1 );
+	console<<"і   і";
+	console.Position( x, y+2 );
+	console<<"і . і";
+	console.Position( x, y+3 );
+	console<<"і   і";
+	console.Position( x, y+4 );
+	console<<"АДДДЩ";
+	switch ( rotate )
+	{
+	case 0:
+		console.Position( x+2, y+1 );
+		console<<"X";
+		console.Position( x+2, y+3 );
+		console<<".";
+		break;
+	case 1:
+		console.Position( x+3, y+1 );
+		console<<"X";
+		console.Position( x+1, y+3 );
+		console<<".";
+		break;
+	case 2:
+		console.Position( x+3, y+2 );
+		console<<"X";
+		console.Position( x+1, y+2 );
+		console<<".";
+		break;
+	case 3:
+		console.Position( x+3, y+3 );
+		console<<"X";
+		console.Position( x+1, y+1 );
+		console<<".";
+		break;
+	case 4:
+		console.Position( x+2, y+3 );
+		console<<"X";
+		console.Position( x+2, y+1 );
+		console<<".";
+		break;
+	case 5:
+		console.Position( x+1, y+3 );
+		console<<"X";
+		console.Position( x+3, y+1 );
+		console<<".";
+		break;
+	case 6:
+		console.Position( x+1, y+2 );
+		console<<"X";
+		console.Position( x+3, y+2 );
+		console<<".";
+		break;
+	case 7:
+		console.Position( x+1, y+1 );
+		console<<"X";
+		console.Position( x+3, y+3 );
+		console<<".";
+		break;
+	}
+}
+void Player::drawHP( int x, int y )
+{
+	console.Position( x, y );
+	if(HP/MHP>.3) Fat::color( C_BLACK, C_GREEN C_LIGHT );
+	if(HP/MHP<=.3) Fat::color( C_BLACK, C_RED C_LIGHT );
+	console<<"HP:"<<HP<<"/"<<MHP;
+}
+void Player::drawMP( int x, int y )
+{
+	Fat::color( C_BLACK, C_WHITE C_LIGHT );
+	console.Position( x, y );
+	console<<"MP:"<<MP<<"/"<<MMP;
+}
+void Player::drawXP( int x, int y )
+{
+	Fat::color( C_BLACK, C_YELLOW C_LIGHT );
+	console.Position( x, y );
+	console<<"XP:"<<XP;
+}
+
+void NPC::drawNPC()
+{
+	console.Position(x,y);
+	Fat::color( C_BLACK, color );
+	console<<tile;
+}
+void NPC::attack( int direction )
+{
+
+}
+void NPC::move( Player p, Floor f, int direction )
+{
+	switch(direction)
+	{
+	case 0:
+		if( p.getX() != x || p.getY() != y-1 )
+		{
+			if( f.canReach(x,y-1) )
+			{
+				y--;
+			}
+		}else{
+			attack(direction);
+		}
+	case 2:
+		if( p.getX() != x+1 || p.getY() != y )
+		{
+			if( f.canReach(x+1,y) )
+			{
+				x++;
+			}
+		}else{
+			attack(direction);
+		}
+	case 4:
+		if( p.getX() != x || p.getY() != y+1 )
+		{
+			if( f.canReach(x,y+1) )
+			{
+				y++;
+			}
+		}else{
+			attack(direction);
+		}
+	case 6:
+		if( p.getX() != x-1 || p.getY() != y )
+		{
+			if( f.canReach(x-1,y) )
+			{
+				x--;
+			}
+		}else{
+			attack(direction);
+		}
+	}
+}
+
+Fat functions;
+#endif
